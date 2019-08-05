@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev" : "./node_modules/.bin/nodemon -L express_server.js -e ejs"
+    "dev" : "./node_modules/.bin/nodemon -L express_server.js -e js,ejs"
   },
   "repository": {
     "type": "git",
