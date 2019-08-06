@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
 const users = require('./users');
 const getUser = require('./getUser');
+const urlDatabase = require('./database');
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser());
@@ -21,11 +22,6 @@ const generateRandomString = function() {
   return randomString;
 };
 
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
-};
-
 app.set('view engine', 'ejs');
 
 app.get("/", (req, res) => {
@@ -33,45 +29,65 @@ app.get("/", (req, res) => {
 });
 
 app.get('/urls/new', (req, res) => {
-  res.render('urls_new', {user: req.user});
+  if (!req.cookies['userID']) {
+    res.redirect('/urls')
+  } else {
+    res.render('urls_new', {user: req.user});
+  }
 });
 
 app.get('/urls', (req, res) => {
+  let data = {};
+  if (req.user) {
+    data = urlDatabase.filterDatabaseByOwner(req.user.id);
+  }
+
   let templateVars = {
-    urls : urlDatabase,
+    urls : data,
     user: req.user };
+    
   res.render('urls_index', templateVars);
 });
 
 app.post('/urls/:shortURL/delete', (req, res) => {
-  delete urlDatabase[req.params.shortURL];
-  res.redirect('/urls');
+  if (req.user && urlDatabase.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
+    delete urlDatabase.urlDatabase[req.params.shortURL];
+    res.redirect('/urls');
+  } else {
+    res.status(403).send('Status Code : 403. You cannot delete someone elses URL.');
+  }
 });
 
 app.get('/urls/:shortURL', (req, res) => {
   let templateVars = {
     shortURL : req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
+    longURL: urlDatabase.urlDatabase[req.params.shortURL].longURL,
+    createdBy : urlDatabase.urlDatabase[req.params.shortURL].userID,
     user: req.user };
+    console.log('templatevars    ' + templateVars);
+    console.log('?????    ' + urlDatabase.urlDatabase[req.params.shortURL]);
   res.render('urls_show', templateVars);
 });
 
 app.post('/urls/:shortURL', (req, res) => {
   const newURL = req.body.longURL;
-  urlDatabase[req.params.shortURL] = newURL;
-  res.redirect('/urls');
+  if (req.user && urlDatabase.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
+    urlDatabase.urlDatabase[req.params.shortURL].longURL = newURL;
+    res.redirect('/urls');
+  } else {
+    res.status(403).send('Status Code : 403. You cannot modify someone elses URL.');
+  }
+ 
 });
 
 app.post("/urls", (req, res) => {
   const tempShortURL = generateRandomString();
-  urlDatabase[tempShortURL] = req.body.longURL;
-  console.log(urlDatabase);
+  urlDatabase.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id };
   res.redirect('/urls/' + tempShortURL);
-  // res.send("Ok");
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
+  const longURL = urlDatabase.urlDatabase[req.params.shortURL].longURL;
   res.redirect(longURL);
 });
 
