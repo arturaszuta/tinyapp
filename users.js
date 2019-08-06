@@ -29,6 +29,16 @@ const users = {
       }
     }
     return false;
+  },
+  findByID(id) {
+    for (let entry of this.userData) {
+      let objectID = Object.keys(entry);
+      if (objectID[0] === id) {
+        return entry[objectID];
+      }
+    }
+    return null;
   }
 }
+console.log(users.findByID('userRandoD'));
 module.exports = users;
