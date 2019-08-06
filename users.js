@@ -3,12 +3,12 @@ const users = {
     "userRandomID": {
       id: "userRandomID", 
       email: "user@example.com", 
-      password: "purple-monkey-dinosaur"
+      password: "$2b$10$CZ.MiVuNq5HB.YA54HRaW.P9UNsSau7f1ZE66ShnsR6xrmb.H41l2" //purple
     }},{
    "user2RandomID": {
       id: "user2RandomID", 
       email: "user2@example.com", 
-      password: "funk"
+      password: "$2b$10$Gb9K7nrlRhasBj6QmqXR2.0TiE.WTO295l/o8ssIoHSIJV5c9vv9u" //funk
     }},
   ],
   all() { return this.userData },
@@ -38,7 +38,8 @@ const users = {
       }
     }
     return null;
-  }
+  },
+
 }
 console.log(users.findByID('userRandoD'));
 module.exports = users;

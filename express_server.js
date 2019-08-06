@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 const users = require('./users');
 const getUser = require('./getUser');
 const urlDatabase = require('./database');
@@ -64,8 +65,6 @@ app.get('/urls/:shortURL', (req, res) => {
     longURL: urlDatabase.urlDatabase[req.params.shortURL].longURL,
     createdBy : urlDatabase.urlDatabase[req.params.shortURL].userID,
     user: req.user };
-    console.log('templatevars    ' + templateVars);
-    console.log('?????    ' + urlDatabase.urlDatabase[req.params.shortURL]);
   res.render('urls_show', templateVars);
 });
 
@@ -99,8 +98,8 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   if (!(req.body.email === users.findByEmail(req.body.email).email)) {
     res.status(403).send('Status Code : 403. Email not found.');
-  } else if (req.body.password !== users.findByEmail(req.body.email).password) {
-    res.status(403).send('Status Code : 403. Password incorrect found.');
+  } else if (!bcrypt.compareSync(req.body.password, users.findByEmail(req.body.email).password)) {
+    res.status(403).send('Status Code : 403. Password incorrect.');
   } else {
     const loggedInUser = users.findByEmail(req.body.email);
     res.cookie('userID', loggedInUser.id);
@@ -120,7 +119,11 @@ app.get('/register', (req, res) => {
 
 app.post('/register', (req, res) => {
   const newID = generateRandomString();
-  let templateVars = { id : newID, email : req.body.email, password : req.body.password };
+  let templateVars = { 
+    id : newID,
+    email : req.body.email,
+    password : bcrypt.hashSync(req.body.password, 10)
+  };
 
   if (!templateVars.email || !templateVars.password) {
     res.status(400).send('You need to provide an email and password!');
@@ -132,6 +135,8 @@ app.post('/register', (req, res) => {
     res.redirect('/urls');
   }
 });
+
+
 
 
 app.listen(PORT, () => {
