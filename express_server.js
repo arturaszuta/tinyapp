@@ -4,6 +4,7 @@ const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
+const moment = require('moment');
 const users = require('./users');
 const getUser = require('./getUser');
 const urlDatabase = require('./database');
@@ -57,6 +58,7 @@ app.get('/urls', (req, res) => {
   let templateVars = {
     urls : data,
     user: req.user };
+    console.log(data);
   res.render('urls_index', templateVars);
 });
 
@@ -83,6 +85,8 @@ app.get('/urls/:shortURL', (req, res) => {
       shortURL : req.params.shortURL,
       longURL: urlDatabase.urlDatabase[req.params.shortURL].longURL,
       createdBy : urlDatabase.urlDatabase[req.params.shortURL].userID,
+      createdAt: urlDatabase.urlDatabase[req.params.shortURL].createdAt,
+      visits: urlDatabase.urlDatabase[req.params.shortURL].visits,
       user: req.user };
     res.render('urls_show', templateVars);
   }
@@ -104,7 +108,7 @@ app.post('/urls/:shortURL', (req, res) => {
 app.post("/urls", (req, res) => {
   if (req.user) {
     const tempShortURL = generateRandomString();
-    urlDatabase.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id };
+    urlDatabase.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id, createdAt: moment().subtract(4, 'hours').format("dddd, MMMM Do YYYY, h:mm:ss a"), visits: 0 };
     res.redirect('/urls/' + tempShortURL);
   } else {
     let errorMessage = encodeURIComponent("You need to be logged in to create new URL's");
@@ -118,6 +122,7 @@ app.get("/u/:shortURL", (req, res) => {
     let errorMessage = encodeURIComponent("This URL does not exist.");
     res.redirect('/error?message=' + errorMessage);
   } else {
+    urlDatabase.urlDatabase[req.params.shortURL].visits ++;
     const longURL = urlDatabase.urlDatabase[req.params.shortURL].longURL;
     res.redirect(longURL);
   }
