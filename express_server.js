@@ -2,14 +2,17 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 const users = require('./users');
 const getUser = require('./getUser');
 const urlDatabase = require('./database');
 
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  secret: 'pleaseNOMORE'
+}));
 app.use(getUser);
 
 
@@ -30,7 +33,7 @@ app.get("/", (req, res) => {
 });
 
 app.get('/urls/new', (req, res) => {
-  if (!req.cookies['userID']) {
+  if (!req.session.userID) {
     res.redirect('/urls')
   } else {
     res.render('urls_new', {user: req.user});
@@ -46,7 +49,6 @@ app.get('/urls', (req, res) => {
   let templateVars = {
     urls : data,
     user: req.user };
-    
   res.render('urls_index', templateVars);
 });
 
@@ -101,14 +103,13 @@ app.post('/login', (req, res) => {
   } else if (!bcrypt.compareSync(req.body.password, users.findByEmail(req.body.email).password)) {
     res.status(403).send('Status Code : 403. Password incorrect.');
   } else {
-    const loggedInUser = users.findByEmail(req.body.email);
-    res.cookie('userID', loggedInUser.id);
+    req.session.userID = users.findByEmail(req.body.email).id;
     res.redirect('/urls');
   }
 });
 
 app.post('/logout', (req, res) => {
-  res.clearCookie('userID');
+  req.session = null;
   res.redirect('/urls');
 });
 
@@ -131,7 +132,7 @@ app.post('/register', (req, res) => {
     res.status(400).send('Email already exists!');
   } else {
     users.add(templateVars);
-    res.cookie('userID', newID);
+    req.session.userID = templateVars.id;
     res.redirect('/urls');
   }
 });
