@@ -6,5 +6,5 @@ const getUser = function(req, res, next) {
   next();
 }
 
-// getUser({session: {userID : 'userRandomID'} }, '',function() {} );
+
 module.exports = getUser;

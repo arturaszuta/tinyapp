@@ -98,12 +98,12 @@ app.get('/login', (req, res) => {
 })
 
 app.post('/login', (req, res) => {
-  if (!(req.body.email === users.findByEmail(req.body.email).email)) {
+  if (!(req.body.email === users.findByEmail(req.body.email, users.userData).email)) {
     res.status(403).send('Status Code : 403. Email not found.');
-  } else if (!bcrypt.compareSync(req.body.password, users.findByEmail(req.body.email).password)) {
+  } else if (!bcrypt.compareSync(req.body.password, users.findByEmail(req.body.email, users.userData).password)) {
     res.status(403).send('Status Code : 403. Password incorrect.');
   } else {
-    req.session.userID = users.findByEmail(req.body.email).id;
+    req.session.userID = users.findByEmail(req.body.email, users.userData).id;
     res.redirect('/urls');
   }
 });
@@ -128,7 +128,7 @@ app.post('/register', (req, res) => {
 
   if (!templateVars.email || !templateVars.password) {
     res.status(400).send('You need to provide an email and password!');
-  } else if (users.findByEmail(templateVars.email).email === templateVars.email) {
+  } else if (users.findByEmail(templateVars.email, users.userData).email === templateVars.email) {
     res.status(400).send('Email already exists!');
   } else {
     users.add(templateVars);

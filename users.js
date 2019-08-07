@@ -21,8 +21,8 @@ const users = {
     }
     this.userData.push(objOut);
   },
-  findByEmail(email) {
-    for (let entry of this.userData) {
+  findByEmail(email, database) {
+    for (let entry of database) {
       let objectID = Object.keys(entry);
       if (entry[objectID].email === email) {
         return entry[objectID];
