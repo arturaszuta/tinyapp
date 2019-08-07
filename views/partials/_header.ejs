@@ -1,26 +1,26 @@
 <header>
-  <nav class="navbar navbar-expand-md navbar-dark bg-success">
+  <nav class="navbar navbar-expand-md navbar-dark bg-success justify-content-between">
     <a class="navbar-brand" href="/urls">TinyApp</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse justify-content-between" id="navbarNavAltMarkup">
-      <div class="navbar-nav">
-        <a class="nav-item nav-link" href="/urls">My URLs</a>
-        <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
+    <!-- Header file which(depending on the state of the user - logged in or not) shows login/register buttons or show URL's/add new URL/logout buttons -->
+    <% if (!user) { %>
+      
+      <div>
+        <a href="/login" class="btn btn-primary">LOGIN</a>
+        <a href="/register" class="btn btn-primary">REGISTER</a>
       </div>
       
-      <% if (!user) { %>
- 
-        <div>
-          <a href="/login" class="btn btn-primary">LOGIN</a>
-          <a href="/register" class="btn btn-primary">REGISTER</a>
-        </div>
-        
       <% } else { %>
+        <div class="collapse navbar-collapse justify-content-between" id="navbarNavAltMarkup">
+          <div class="navbar-nav">
+            <a class="nav-item nav-link" href="/urls">My URLs</a>
+            <a class="nav-item nav-link" href="/urls/new">Create a New Short Link</a>
+          </div>
 
         <form class="form-inline justify-content-center" action="/logout" method="POST">
-            <label for="email"><%= user.email %></label>
+            <label for="email" style="margin-right: 2em; font-size: 1.25em; color: white;"><%= user.email %></label>
             <button type="submit" class="btn btn-primary">Logout</button>
         </form>
 

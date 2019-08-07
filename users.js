@@ -1,3 +1,4 @@
+//Main user data model + methods which return: all user data, add data to the userData array, finds users by either ID or email
 const users = {
   userData: [{
     "userRandomID": {

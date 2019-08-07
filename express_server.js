@@ -15,8 +15,9 @@ app.use(cookieSession({
 }));
 app.use(getUser);
 
+app.set('view engine', 'ejs');
 
-
+//Function which generates 6 digit random strings to be used for user ID's and URL's
 const generateRandomString = function() {
   const alphaNum = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
   let randomString = '';
@@ -26,20 +27,27 @@ const generateRandomString = function() {
   return randomString;
 };
 
-app.set('view engine', 'ejs');
+//All the routes below :
 
+//"Root route" - either routes to login page if you're not logged in or to main list or URL's if you're
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  if (req.user) {
+    res.redirect('/urls');
+  } else {
+    res.redirect('/login');
+  }
 });
 
+//Display fomr to create new URL
 app.get('/urls/new', (req, res) => {
   if (!req.session.userID) {
-    res.redirect('/urls')
+    res.redirect('/login')
   } else {
     res.render('urls_new', {user: req.user});
   }
 });
 
+//Show all URL's belonging to signed in user or display message that you need to be logged in
 app.get('/urls', (req, res) => {
   let data = {};
   if (req.user) {
@@ -52,72 +60,110 @@ app.get('/urls', (req, res) => {
   res.render('urls_index', templateVars);
 });
 
+
+//Delete short URL route - which checks whether the user is logged in and they own the particular URL
 app.post('/urls/:shortURL/delete', (req, res) => {
   if (req.user && urlDatabase.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
     delete urlDatabase.urlDatabase[req.params.shortURL];
     res.redirect('/urls');
   } else {
-    res.status(403).send('Status Code : 403. You cannot delete someone elses URL.');
+    let errorMessage = encodeURIComponent("You cannot delete someone elses URL.");
+    res.status(403).redirect('/error?message=' + errorMessage);
   }
 });
 
+
+//Show individual URL - where you're a ble to edit the page which the URL points to, also checks whether the user is logged in an owns the particular URL
 app.get('/urls/:shortURL', (req, res) => {
-  let templateVars = {
-    shortURL : req.params.shortURL,
-    longURL: urlDatabase.urlDatabase[req.params.shortURL].longURL,
-    createdBy : urlDatabase.urlDatabase[req.params.shortURL].userID,
-    user: req.user };
-  res.render('urls_show', templateVars);
+  if (urlDatabase.urlDatabase[req.params.shortURL] === undefined) {
+    let errorMessage = encodeURIComponent("Can't find this tiny URL.");
+    res.redirect('/error?message=' + errorMessage);
+  } else {
+    let templateVars = {
+      shortURL : req.params.shortURL,
+      longURL: urlDatabase.urlDatabase[req.params.shortURL].longURL,
+      createdBy : urlDatabase.urlDatabase[req.params.shortURL].userID,
+      user: req.user };
+    res.render('urls_show', templateVars);
+  }
 });
 
+//Post route for updating the URL - checks whether the user is logged in and owns the URL
 app.post('/urls/:shortURL', (req, res) => {
   const newURL = req.body.longURL;
   if (req.user && urlDatabase.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
     urlDatabase.urlDatabase[req.params.shortURL].longURL = newURL;
     res.redirect('/urls');
   } else {
-    res.status(403).send('Status Code : 403. You cannot modify someone elses URL.');
+    let errorMessage = encodeURIComponent("You cannot modify someone elses URL.");
+    res.status(403).redirect('/error?message=' + errorMessage);
   }
- 
 });
 
+//Post route to create new URL's - checks whether the user is logged in
 app.post("/urls", (req, res) => {
-  const tempShortURL = generateRandomString();
-  urlDatabase.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id };
-  res.redirect('/urls/' + tempShortURL);
+  if (req.user) {
+    const tempShortURL = generateRandomString();
+    urlDatabase.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id };
+    res.redirect('/urls/' + tempShortURL);
+  } else {
+    let errorMessage = encodeURIComponent("You need to be logged in to create new URL's");
+    res.redirect('/error?message=' + errorMessage);
+  }
 });
 
+//Route which reroutes the short URL to intended destination, checks whether the short URL is existing in the database
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase.urlDatabase[req.params.shortURL].longURL;
-  res.redirect(longURL);
+  if (urlDatabase.urlDatabase[req.params.shortURL] === undefined) {
+    let errorMessage = encodeURIComponent("This URL does not exist.");
+    res.redirect('/error?message=' + errorMessage);
+  } else {
+    const longURL = urlDatabase.urlDatabase[req.params.shortURL].longURL;
+    res.redirect(longURL);
+  }
 });
 
+//Route to show login form, if the user is already logged in redirect to the main URL page
 app.get('/login', (req, res) => {
-  const templateVars = { user : req.user }
-  res.render('urls_login', templateVars);
+  if (req.user) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = { user : req.user }
+    res.render('urls_login', templateVars);
+  }
 })
 
+//Post route to login - which checks whether the user password and email are not blank, and whether the email and password match
 app.post('/login', (req, res) => {
   if (!(req.body.email === users.findByEmail(req.body.email, users.userData).email)) {
-    res.status(403).send('Status Code : 403. Email not found.');
+    let errorMessage = encodeURIComponent("Email not found.");
+    res.status(403).redirect('/error?message=' + errorMessage);
   } else if (!bcrypt.compareSync(req.body.password, users.findByEmail(req.body.email, users.userData).password)) {
-    res.status(403).send('Status Code : 403. Password incorrect.');
+    let errorMessage = encodeURIComponent("Password is incorrect");
+    res.status(403).redirect('/error?message=' + errorMessage);
   } else {
     req.session.userID = users.findByEmail(req.body.email, users.userData).id;
     res.redirect('/urls');
   }
 });
 
+//Logout and redirect
 app.post('/logout', (req, res) => {
   req.session = null;
   res.redirect('/urls');
 });
 
+//Route to render registration form, is user is already logged in - redirect to main URL's
 app.get('/register', (req, res) => {
-  let templateVars = { user: req.user };
-  res.render('urls_register', templateVars);
+  if (req.user) {
+    res.redirect('/urls');
+  } else {
+    let templateVars = { user: req.user };
+    res.render('urls_register', templateVars);
+  }
 });
 
+//Post route for register form - checks whether the email is unique and password is provided
 app.post('/register', (req, res) => {
   const newID = generateRandomString();
   let templateVars = { 
@@ -126,10 +172,12 @@ app.post('/register', (req, res) => {
     password : bcrypt.hashSync(req.body.password, 10)
   };
 
-  if (!templateVars.email || !templateVars.password) {
-    res.status(400).send('You need to provide an email and password!');
+  if (!templateVars.email || req.body.password === '') {
+    let errorMessage = encodeURIComponent("You need to provide email and password.")
+    res.status(400).redirect('/error?message=' + errorMessage);
   } else if (users.findByEmail(templateVars.email, users.userData).email === templateVars.email) {
-    res.status(400).send('Email already exists!');
+    let errorMessage = encodeURIComponent("Email already exists.")
+    res.status(400).redirect('/error?message=' + errorMessage);
   } else {
     users.add(templateVars);
     req.session.userID = templateVars.id;
@@ -137,7 +185,11 @@ app.post('/register', (req, res) => {
   }
 });
 
-
+//Generic error page - which shows error message passed from other routes.
+app.get('/error', (req, res) => {
+  let error = req.query.message;
+  res.render('error_page', { errorMessage: error, user: req.user })
+})
 
 
 app.listen(PORT, () => {

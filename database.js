@@ -4,6 +4,7 @@ const urlDatabase = {
   i3BoG3: { longURL: "https://www.google.ca", userID: "abc1234" }
 };
 
+//Helper function which returns URL's belonging to a USER
 const filterDatabaseByOwner = function(ID) {
   let answerOBJ = {};
   for (let entry in urlDatabase) {
@@ -17,8 +18,6 @@ const filterDatabaseByOwner = function(ID) {
     return answerOBJ;
   }
 }
-
-console.log(filterDatabaseByOwner('abc3451234'));
 
 module.exports = {
   urlDatabase,
