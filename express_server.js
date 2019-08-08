@@ -5,9 +5,9 @@ const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
-const users = require('./users');
-const getUser = require('./getUser');
-const urlDatabase = require('./database');
+const users = require('./scripts/users');
+const getUser = require('./scripts/getUser');
+const url = require('./scripts/database');
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieSession({
@@ -42,7 +42,7 @@ app.get("/", (req, res) => {
 //Display fomr to create new URL
 app.get('/urls/new', (req, res) => {
   if (!req.session.userID) {
-    res.redirect('/login')
+    res.redirect('/login');
   } else {
     res.render('urls_new', {user: req.user});
   }
@@ -52,21 +52,20 @@ app.get('/urls/new', (req, res) => {
 app.get('/urls', (req, res) => {
   let data = {};
   if (req.user) {
-    data = urlDatabase.filterDatabaseByOwner(req.user.id);
+    data = url.filterDatabaseByOwner(req.user.id);
   }
 
   let templateVars = {
     urls : data,
     user: req.user };
-    console.log(data);
   res.render('urls_index', templateVars);
 });
 
 
 //Delete short URL route - which checks whether the user is logged in and they own the particular URL
 app.post('/urls/:shortURL/delete', (req, res) => {
-  if (req.user && urlDatabase.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
-    delete urlDatabase.urlDatabase[req.params.shortURL];
+  if (req.user && url.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
+    delete url.urlDatabase[req.params.shortURL];
     res.redirect('/urls');
   } else {
     let errorMessage = encodeURIComponent("You cannot delete someone elses URL.");
@@ -77,16 +76,16 @@ app.post('/urls/:shortURL/delete', (req, res) => {
 
 //Show individual URL - where you're a ble to edit the page which the URL points to, also checks whether the user is logged in an owns the particular URL
 app.get('/urls/:shortURL', (req, res) => {
-  if (urlDatabase.urlDatabase[req.params.shortURL] === undefined) {
+  if (url.urlDatabase[req.params.shortURL] === undefined) {
     let errorMessage = encodeURIComponent("Can't find this tiny URL.");
     res.redirect('/error?message=' + errorMessage);
   } else {
     let templateVars = {
       shortURL : req.params.shortURL,
-      longURL: urlDatabase.urlDatabase[req.params.shortURL].longURL,
-      createdBy : urlDatabase.urlDatabase[req.params.shortURL].userID,
-      createdAt: urlDatabase.urlDatabase[req.params.shortURL].createdAt,
-      visits: urlDatabase.urlDatabase[req.params.shortURL].visits,
+      longURL: url.urlDatabase[req.params.shortURL].longURL,
+      createdBy : url.urlDatabase[req.params.shortURL].userID,
+      createdAt: url.urlDatabase[req.params.shortURL].createdAt,
+      visits: url.urlDatabase[req.params.shortURL].visits,
       user: req.user };
     res.render('urls_show', templateVars);
   }
@@ -95,8 +94,8 @@ app.get('/urls/:shortURL', (req, res) => {
 //Post route for updating the URL - checks whether the user is logged in and owns the URL
 app.post('/urls/:shortURL', (req, res) => {
   const newURL = req.body.longURL;
-  if (req.user && urlDatabase.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
-    urlDatabase.urlDatabase[req.params.shortURL].longURL = newURL;
+  if (req.user && url.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
+    url.urlDatabase[req.params.shortURL].longURL = newURL;
     res.redirect('/urls');
   } else {
     let errorMessage = encodeURIComponent("You cannot modify someone elses URL.");
@@ -106,24 +105,24 @@ app.post('/urls/:shortURL', (req, res) => {
 
 //Post route to create new URL's - checks whether the user is logged in
 app.post("/urls", (req, res) => {
-  if (req.user) {
+  if (req.user && req.body.longURL !== '') {
     const tempShortURL = generateRandomString();
-    urlDatabase.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id, createdAt: moment().subtract(4, 'hours').format("dddd, MMMM Do YYYY, h:mm:ss a"), visits: 0 };
+    url.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id, createdAt: moment().subtract(4, 'hours').format("dddd, MMMM Do YYYY, h:mm:ss a"), visits: 0 };
     res.redirect('/urls/' + tempShortURL);
   } else {
-    let errorMessage = encodeURIComponent("You need to be logged in to create new URL's");
+    let errorMessage = encodeURIComponent("You need to be logged in and  provide a link to create new URL's");
     res.redirect('/error?message=' + errorMessage);
   }
 });
 
 //Route which reroutes the short URL to intended destination, checks whether the short URL is existing in the database
 app.get("/u/:shortURL", (req, res) => {
-  if (urlDatabase.urlDatabase[req.params.shortURL] === undefined) {
+  if (url.urlDatabase[req.params.shortURL] === undefined) {
     let errorMessage = encodeURIComponent("This URL does not exist.");
     res.redirect('/error?message=' + errorMessage);
   } else {
-    urlDatabase.urlDatabase[req.params.shortURL].visits ++;
-    const longURL = urlDatabase.urlDatabase[req.params.shortURL].longURL;
+    url.urlDatabase[req.params.shortURL].visits ++;
+    const longURL = url.urlDatabase[req.params.shortURL].longURL;
     res.redirect(longURL);
   }
 });
@@ -133,10 +132,10 @@ app.get('/login', (req, res) => {
   if (req.user) {
     res.redirect('/urls');
   } else {
-    const templateVars = { user : req.user }
+    const templateVars = { user : req.user };
     res.render('urls_login', templateVars);
   }
-})
+});
 
 //Post route to login - which checks whether the user password and email are not blank, and whether the email and password match
 app.post('/login', (req, res) => {
@@ -171,17 +170,17 @@ app.get('/register', (req, res) => {
 //Post route for register form - checks whether the email is unique and password is provided
 app.post('/register', (req, res) => {
   const newID = generateRandomString();
-  let templateVars = { 
+  let templateVars = {
     id : newID,
     email : req.body.email,
     password : bcrypt.hashSync(req.body.password, 10)
   };
 
   if (!templateVars.email || req.body.password === '') {
-    let errorMessage = encodeURIComponent("You need to provide email and password.")
+    let errorMessage = encodeURIComponent("You need to provide email and password.");
     res.status(400).redirect('/error?message=' + errorMessage);
   } else if (users.findByEmail(templateVars.email, users.userData).email === templateVars.email) {
-    let errorMessage = encodeURIComponent("Email already exists.")
+    let errorMessage = encodeURIComponent("Email already exists.");
     res.status(400).redirect('/error?message=' + errorMessage);
   } else {
     users.add(templateVars);
@@ -193,8 +192,8 @@ app.post('/register', (req, res) => {
 //Generic error page - which shows error message passed from other routes.
 app.get('/error', (req, res) => {
   let error = req.query.message;
-  res.render('error_page', { errorMessage: error, user: req.user })
-})
+  res.render('error_page', { errorMessage: error, user: req.user });
+});
 
 
 app.listen(PORT, () => {

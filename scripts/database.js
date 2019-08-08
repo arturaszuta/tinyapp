@@ -17,9 +17,9 @@ const filterDatabaseByOwner = function(ID) {
   } else {
     return answerOBJ;
   }
-}
+};
 
 module.exports = {
   urlDatabase,
   filterDatabaseByOwner
-}
+};
