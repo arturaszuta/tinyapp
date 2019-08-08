@@ -5,7 +5,7 @@ const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
-const methodOverride = require('method-override')
+const methodOverride = require('method-override');
 
 const users = require('./scripts/users');
 const getUser = require('./scripts/getUser');
