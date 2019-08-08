@@ -6,8 +6,8 @@ TinyApp is a full stack web application built with Node and Express that allows 
 
 Current version of TinyApp allows users to login, create/edit and delete links. Additional information (like when the link was created or how many visists it has in total) is also available.
 
-!["screenshot description"](#)
-!["screenshot description"](#)
+!["Main URLs page"](https://github.com/arturaszuta/tinyapp/blob/master/docs/urls-page.png?raw=true)
+!["Edit URL page"](https://github.com/arturaszuta/tinyapp/blob/master/docs/url-edit.png?raw=true)
 
 ## Dependencies
 
