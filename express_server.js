@@ -5,6 +5,8 @@ const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
+const methodOverride = require('method-override')
+
 const users = require('./scripts/users');
 const getUser = require('./scripts/getUser');
 const url = require('./scripts/database');
@@ -14,15 +16,16 @@ app.use(cookieSession({
   name: 'session',
   secret: 'pleaseNOMORE'
 }));
+app.use(methodOverride('_method'));
 app.use(getUser);
 
 app.set('view engine', 'ejs');
 
 //Function which generates 6 digit random strings to be used for user ID's and URL's
-const generateRandomString = function() {
-  const alphaNum = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
+const generateRandomString = function(chars) {
+  const alphaNum = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
   let randomString = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < chars; i++) {
     randomString += alphaNum[Math.floor(Math.random() * alphaNum.length)];
   }
   return randomString;
@@ -63,7 +66,7 @@ app.get('/urls', (req, res) => {
 
 
 //Delete short URL route - which checks whether the user is logged in and they own the particular URL
-app.post('/urls/:shortURL/delete', (req, res) => {
+app.delete('/urls/:shortURL', (req, res) => {
   if (req.user && url.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
     delete url.urlDatabase[req.params.shortURL];
     res.redirect('/urls');
@@ -86,13 +89,15 @@ app.get('/urls/:shortURL', (req, res) => {
       createdBy : url.urlDatabase[req.params.shortURL].userID,
       createdAt: url.urlDatabase[req.params.shortURL].createdAt,
       visits: url.urlDatabase[req.params.shortURL].visits,
+      uniqueRegisteredVisitors: url.urlDatabase[req.params.shortURL].uniqueRegisteredVisitors,
+      visitTracker: url.urlDatabase[req.params.shortURL].visitTracker,
       user: req.user };
     res.render('urls_show', templateVars);
   }
 });
 
 //Post route for updating the URL - checks whether the user is logged in and owns the URL
-app.post('/urls/:shortURL', (req, res) => {
+app.put('/urls/:shortURL', (req, res) => {
   const newURL = req.body.longURL;
   if (req.user && url.filterDatabaseByOwner(req.user.id)[req.params.shortURL].userID === req.user.id) {
     url.urlDatabase[req.params.shortURL].longURL = newURL;
@@ -106,8 +111,8 @@ app.post('/urls/:shortURL', (req, res) => {
 //Post route to create new URL's - checks whether the user is logged in
 app.post("/urls", (req, res) => {
   if (req.user && req.body.longURL !== '') {
-    const tempShortURL = generateRandomString();
-    url.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id, createdAt: moment().subtract(4, 'hours').format("dddd, MMMM Do YYYY, h:mm:ss a"), visits: 0 };
+    const tempShortURL = generateRandomString(6);
+    url.urlDatabase[tempShortURL] = { longURL : req.body.longURL, userID : req.user.id, createdAt: moment().subtract(4, 'hours').format("dddd, MMMM Do YYYY, h:mm:ss a"), visits: 0, uniqueRegisteredVisitors: [], visitTracker: [] };
     res.redirect('/urls/' + tempShortURL);
   } else {
     let errorMessage = encodeURIComponent("You need to be logged in and  provide a link to create new URL's");
@@ -121,8 +126,14 @@ app.get("/u/:shortURL", (req, res) => {
     let errorMessage = encodeURIComponent("This URL does not exist.");
     res.redirect('/error?message=' + errorMessage);
   } else {
-    url.urlDatabase[req.params.shortURL].visits ++;
+    const timeNow = moment().subtract(4, 'hours').format("dddd, MMMM Do YYYY, h:mm:ss a");
     const longURL = url.urlDatabase[req.params.shortURL].longURL;
+    const ID = req.session.userID;
+    url.updateVisits(req.params.shortURL, generateRandomString(8), timeNow);
+    if (url.isUniqueVisitor(req.params.shortURL, ID)) {
+      url.urlDatabase[req.params.shortURL].uniqueRegisteredVisitors.push(ID);
+    }
+    url.urlDatabase[req.params.shortURL].visits ++;
     res.redirect(longURL);
   }
 });
@@ -169,7 +180,7 @@ app.get('/register', (req, res) => {
 
 //Post route for register form - checks whether the email is unique and password is provided
 app.post('/register', (req, res) => {
-  const newID = generateRandomString();
+  const newID = generateRandomString(7);
   let templateVars = {
     id : newID,
     email : req.body.email,
